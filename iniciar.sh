@@ -4,6 +4,9 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 cd "$DIR"
 
+export PATH="$HOME/.local/bin:$PATH"
+[ -f ".project-root" ] || touch .project-root
+
 # Detecta interpretador Python
 if [ -d ".venv" ]; then
     VENV_PYTHON=".venv/bin/python"

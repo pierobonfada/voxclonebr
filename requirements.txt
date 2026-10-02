@@ -2,6 +2,7 @@
 torch==2.8.0
 torchaudio==2.8.0
 fish-speech @ git+https://github.com/fishaudio/fish-speech.git
+transformers>=4.43.0,<=4.57.3
 tokenizers>=0.15.0
 faster-whisper==1.2.1
 av==13.1.0

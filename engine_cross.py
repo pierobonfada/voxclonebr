@@ -388,6 +388,7 @@ class CrossMemoryS2ProEngine:
 
     def export_mp3_128k(self, audio_data: np.ndarray, output_path: str):
         """Encodes raw numpy audio into MP3 at exactly 128 kbps using ffmpeg."""
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_wav:
             tmp_wav_path = tmp_wav.name
 
@@ -404,7 +405,10 @@ class CrossMemoryS2ProEngine:
                 "mp3",
                 output_path,
             ]
-            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            res = subprocess.run(cmd, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if res.returncode != 0:
+                error_msg = res.stderr.decode("utf-8", errors="replace")
+                raise RuntimeError(f"FFmpeg MP3 export failed (code {res.returncode}): {error_msg}")
             logger.info(f"Exported MP3 128k to {output_path} (size: {os.path.getsize(output_path)} bytes)")
         finally:
             if os.path.exists(tmp_wav_path):
