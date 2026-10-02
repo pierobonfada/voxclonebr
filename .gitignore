@@ -1,0 +1,39 @@
+# Ambientes Virtuais Python
+.venv/
+venv/
+env/
+ENV/
+*.venv
+
+# Caches e Compilações Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.ruff_cache/
+
+# Pesos de Modelos (devem ser baixados via download_models.py)
+checkpoints/
+*.safetensors
+*.pth
+*.pt
+*.bin
+*.onnx
+
+# Arquivos de Áudio de Saída e Amostras Temporárias
+outputs/
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.m4a
+*.aac
+*.opus
+
+# Logs e Arquivos de Sistema
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
