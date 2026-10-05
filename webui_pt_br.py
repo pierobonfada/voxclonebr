@@ -67,13 +67,14 @@ def format_vram_status() -> str:
     """
 
 
-def normalize_and_transcribe_audio(file_path: str, model_size: str):
+def normalize_and_transcribe_audio(file_path: str, model_size: str, language: str = "auto"):
     """
     Recebe qualquer arquivo de áudio (.ogg, .mp3, .wav, .m4a, etc.),
-    converte via FFmpeg para WAV/MP3 limpo e executa a transcrição Whisper.
+    converte via FFmpeg para WAV/MP3 limpo e executa a transcrição Whisper
+    no idioma original falado (sem traduzir para português).
     """
     if not file_path or not os.path.exists(file_path):
-        return None, "", "Nenhum áudio recebido."
+        return None, "", "", "Nenhum áudio recebido."
 
     logger.info(f"Processando áudio recebido: {file_path}")
     t0 = time.time()
@@ -109,9 +110,13 @@ def normalize_and_transcribe_audio(file_path: str, model_size: str):
     # Transcreve com Whisper na CPU
     transcriber = get_transcriber(model_size)
     try:
-        text = transcriber.transcribe(audio_for_model, language="pt")
+        lang_arg = None if language in (None, "auto", "Auto", "") else language
+        text, detected_lang = transcriber.transcribe(
+            audio_for_model, language=lang_arg, task="transcribe", return_language=True
+        )
         elapsed = time.time() - t0
-        status_msg = f"✅ Áudio processado e transcrito com sucesso em {elapsed:.1f}s!"
+        lang_info = f" [Idioma: {detected_lang.upper()}]" if detected_lang else ""
+        status_msg = f"✅ Áudio processado e transcrito com sucesso em {elapsed:.1f}s!{lang_info}"
     except Exception as e:
         logger.error(f"Erro na transcrição Whisper: {e}")
         text = ""
@@ -265,15 +270,33 @@ def build_app(initial_cpu_layers: int = 4) -> gr.Blocks:
                         value="small",
                         scale=2,
                     )
-                    btn_retranscribe = gr.Button("🔄 Re-transcrever Áudio", scale=2, variant="secondary")
+                    whisper_lang_choice = gr.Dropdown(
+                        label="Idioma da Amostra",
+                        choices=[
+                            ("Automático (Detectar sem traduzir)", "auto"),
+                            ("Inglês (en)", "en"),
+                            ("Português (pt)", "pt"),
+                            ("Espanhol (es)", "es"),
+                            ("Francês (fr)", "fr"),
+                            ("Italiano (it)", "it"),
+                            ("Alemão (de)", "de"),
+                            ("Japonês (ja)", "ja"),
+                            ("Chinês (zh)", "zh"),
+                        ],
+                        value="auto",
+                        scale=3,
+                        info="Transcreve no idioma falado original sem traduzir",
+                    )
+                    btn_retranscribe = gr.Button("🔄 Re-transcrever", scale=2, variant="secondary")
 
                 transcribe_status = gr.Markdown(value="*Envie um áudio para transcrever automaticamente com IA.*")
 
                 ref_text = gr.Textbox(
-                    label="📝 Texto Falado no Áudio de Amostra (Editável)",
-                    placeholder="O texto falado no áudio acima aparecerá aqui automaticamente. Você pode editá-lo para corrigir pontuação ou pronúncia.",
+                    label="📝 Texto Falado no Áudio de Amostra (Transcrição Original - Editável)",
+                    placeholder="O texto falado no áudio acima aparecerá aqui automaticamente no idioma original falado (sem traduzir). Você pode editá-lo para corrigir pontuação ou pronúncia.",
                     lines=3,
                     interactive=True,
+                    info="O texto deve corresponder exatamente ao que é dito no áudio de referência (mesmo em inglês), preservando a coerência com os tokens acústicos do modelo TTS.",
                 )
 
                 with gr.Accordion("⚙️ Configurações Avançadas da Síntese", open=False):
@@ -378,22 +401,22 @@ def build_app(initial_cpu_layers: int = 4) -> gr.Blocks:
 
         file_input.change(
             normalize_and_transcribe_audio,
-            inputs=[file_input, whisper_model_choice],
+            inputs=[file_input, whisper_model_choice, whisper_lang_choice],
             outputs=[audio_preview, processed_audio_state, ref_text, transcribe_status],
         )
 
         mic_input.change(
             normalize_and_transcribe_audio,
-            inputs=[mic_input, whisper_model_choice],
+            inputs=[mic_input, whisper_model_choice, whisper_lang_choice],
             outputs=[audio_preview, processed_audio_state, ref_text, transcribe_status],
         )
 
-        def retranscribe_action(curr_audio, model_sz):
-            return normalize_and_transcribe_audio(curr_audio, model_sz)
+        def retranscribe_action(curr_audio, model_sz, lang):
+            return normalize_and_transcribe_audio(curr_audio, model_sz, lang)
 
         btn_retranscribe.click(
             retranscribe_action,
-            inputs=[processed_audio_state, whisper_model_choice],
+            inputs=[processed_audio_state, whisper_model_choice, whisper_lang_choice],
             outputs=[audio_preview, processed_audio_state, ref_text, transcribe_status],
         )
 

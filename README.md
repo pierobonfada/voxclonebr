@@ -17,10 +17,11 @@ Desenvolvido especificamente para rodar com eficiência em máquinas com **12 GB
 - 🎧 **Entrada Universal de Áudio (.ogg, .mp3, .wav, etc.):**
   - Aceita áudios diretamente de mensagens do **WhatsApp**, Telegram e gravações de voz sem erros de rejeição de formato.
   - Pré-processamento e normalização automática via FFmpeg.
-- ⚡ **Transcrição Automática (ASR) com 24 Núcleos de CPU:**
-  - Decifra automaticamente o que foi falado no áudio de amostra via **Faster-Whisper (int8)**.
+- ⚡ **Transcrição Automática (ASR) Fiel ao Idioma Falado (CPU):**
+  - Decifra automaticamente o que foi falado no áudio de amostra via **Faster-Whisper (int8)** com uso de múltiplos núcleos de CPU.
+  - **Detecção automática de idioma original (sem tradução forçada):** Transcreve áudios em inglês, português, espanhol, etc. no seu idioma original falado, preservando o alinhamento fonético exato com os tokens acústicos exigidos pelo Fish Audio S2-Pro.
   - Não consome nenhum byte de VRAM da GPU para transcrição.
-  - Preenche automaticamente uma caixa de texto editável para correção manual de pontuação antes da clonagem.
+  - Preenche automaticamente uma caixa de texto editável para correção manual ou pontuação antes da clonagem.
 - 🚀 **Arquitetura Híbrida Cross-Memory (GPU VRAM ≤ 10 GB):**
   - Mantém o uso da placa de vídeo entre 7.2 GB e 8.7 GB de pico, sem risco de Out-of-Memory (OOM).
   - Faz o balanceamento inteligente enviando camadas iniciais, embeddings e o codec de áudio DAC para a memória RAM do computador.

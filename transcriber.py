@@ -2,12 +2,16 @@ import os
 import tempfile
 import subprocess
 from pathlib import Path
+from typing import Optional, Tuple, Union
 from loguru import logger
 from faster_whisper import WhisperModel
 
 class AudioTranscriber:
     """
-    Motor de Reconhecimento Automático de Fala (ASR) para Português do Brasil usando faster-whisper na CPU.
+    Motor de Reconhecimento Automático de Fala (ASR) universal usando faster-whisper na CPU.
+    Detecta automaticamente o idioma original falado (ou utiliza o idioma informado)
+    e transcreve a fala no seu idioma original sem forçar tradução, garantindo alinhamento acústico
+    correto para o prompt de modelos TTS (como Fish Audio S2-Pro).
     Aceita QUALQUER formato de áudio (.ogg do WhatsApp, mp3, wav, m4a, flac, opus, etc.)
     sem consumir VRAM da GPU e utilizando todos os núcleos de CPU disponíveis.
     """
@@ -23,11 +27,19 @@ class AudioTranscriber:
             cpu_threads=threads,
             num_workers=4,
         )
+        self.last_detected_language = None
+        self.last_language_probability = 0.0
         logger.info(f"Transcriber pronto com {threads} threads de CPU.")
 
-    def transcribe(self, audio_path: str, language: str = "pt") -> str:
+    def transcribe(
+        self,
+        audio_path: str,
+        language: Optional[str] = None,
+        task: str = "transcribe",
+        return_language: bool = False,
+    ) -> Union[str, Tuple[str, str]]:
         if not audio_path or not os.path.exists(audio_path):
-            return ""
+            return ("", "") if return_language else ""
 
         input_path = audio_path
         tmp_converted_path = None
@@ -56,16 +68,31 @@ class AudioTranscriber:
             logger.warning(f"Aviso na conversão FFmpeg fallback: {e}. Tentando leitura direta.")
             input_path = audio_path
 
+        # Normaliza parâmetro de idioma: "auto", "", None resultam em detecção automática
+        target_lang = None
+        if language and str(language).lower().strip() not in ("auto", "none", ""):
+            target_lang = str(language).lower().strip()
+
         try:
+            # task="transcribe" garante que o Whisper transcreva no idioma falado e NÃO traduza o áudio
             segments, info = self.model.transcribe(
                 input_path,
-                language=language,
+                language=target_lang,
+                task=task,
                 beam_size=5,
                 vad_filter=True,
             )
+            self.last_detected_language = info.language
+            self.last_language_probability = info.language_probability
+
             text_parts = [s.text.strip() for s in segments]
             transcription = " ".join(text_parts).strip()
-            logger.info(f"Transcrição concluída ({len(transcription)} caracteres): {transcription}")
+            logger.info(
+                f"Transcrição concluída ({len(transcription)} caracteres) | "
+                f"Idioma detectado/usado: '{info.language}' (confiança: {info.language_probability:.2f}): {transcription}"
+            )
+            if return_language:
+                return transcription, info.language
             return transcription
         finally:
             if tmp_converted_path and os.path.exists(tmp_converted_path):
